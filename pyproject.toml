@@ -18,6 +18,7 @@ dev = [
     "coverage==7.14.1",
     "ruff==0.15.15",
     "mypy==2.1.0",
+    "types-PyYAML==6.0.12.20260518",
 ]
 
 [build-system]
@@ -37,6 +38,14 @@ src = ["src", "tests"]
 # Conservative-but-strict rule set; complexity capped per coding standards.
 select = ["E", "F", "I", "N", "UP", "B", "C90", "RUF", "SIM", "PL"]
 ignore = []
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests assert against literal expected values from the spec; naming each one as a
+# constant would obscure intent, not clarify it.
+"tests/**" = ["PLR2004"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 8

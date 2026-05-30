@@ -1,0 +1,61 @@
+# Market-Translation System v0.1 — resolved config for the first 3–5 day moneyline-only
+# audit (spec/00_build_plan.md §4). The API key is NEVER stored here; it is read only
+# from the env var ODDS_API_KEY (CLAUDE.md §7; base §4). A resolved, secret-free copy of
+# this file is canonical-serialized and hashed into audit_runs.config_snapshot at T4.
+run:
+  run_label: "v0.1_p1_feasibility_window_01"
+  dry_run: false                  # true only for fixture runs
+  threshold_locked: true          # forbids mid-run edge_threshold change
+  db_path: "data/market_translation.sqlite"
+
+api:
+  base_url: "https://<provider>"  # real provider URL supplied at T7 (see CLAUDE.md §5)
+  region: "us"
+  # api_key: env ODDS_API_KEY only — never here
+  request_timeout_s: 10
+  max_retries: 2
+
+target:
+  sport_keys: ["baseball_mlb"]    # ONE liquid two-way sport to start
+  market_key: "h2h"
+  allowed_two_way_only: true
+  excluded_sports: ["soccer_epl", "soccer_uefa_champs_league"]  # 3-way; out of scope
+
+sharp_source:
+  sharp_book_primary: "pinnacle"
+  sharp_book_fallback: "circasports"
+  sharp_disagree_tolerance_prob: 0.010
+
+soft_books: ["draftkings", "fanduel", "betmgm", "caesars"]
+
+timing:
+  pull_interval_seconds: 90
+  freshness_window_seconds: { sharp: 120, soft: 120 }
+  confirm_pull_delays_seconds: [45]      # single confirm to start (P1 multi-confirm ready)
+  confirm_worker_poll_seconds: 5
+  close_capture_window_minutes: 10
+  close_worker_poll_seconds: 15
+  close_polling_schedule:
+    - { from_min: 60, to_min: 15, interval_s: 120 }
+    - { from_min: 15, to_min: 0,  interval_s: 30 }
+
+signal:
+  edge_threshold_pct: 2.0          # COMMITTED + LOCKED before run
+
+sanity:
+  price_decimal_min: 1.01
+  price_decimal_max: 51.0
+
+time:
+  storage_timezone: "UTC"
+  display_timezone: "America/New_York"
+
+reporting:
+  daily_run_time_local: "09:00"
+  feasibility_min_graded_unique: 100   # Tier-1 checkpoint floor
+
+logging:
+  level: "INFO"
+
+dryrun:
+  scenario_path: "fixtures/scenario_basic.yaml"
