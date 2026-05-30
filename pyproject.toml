@@ -1,0 +1,70 @@
+[project]
+name = "market-translation"
+version = "0.1.0"
+description = "Moneyline-only soft-vs-sharp divergence CLV measurement harness (not a betting bot)."
+readme = "README.md"
+requires-python = ">=3.12"
+# Runtime dependencies are added per ticket as they are first needed (T2 uses PyYAML;
+# T7 will add the HTTP client). T1 (scaffold + constants) needs no runtime deps.
+dependencies = [
+    "PyYAML==6.0.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.0.3",
+    "pytest-cov==7.1.0",
+    "hypothesis==6.155.1",
+    "coverage==7.14.1",
+    "ruff==0.15.15",
+    "mypy==2.1.0",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["src"]
+
+# --- Lint + format (CLAUDE.md §7) -------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+# Conservative-but-strict rule set; complexity capped per coding standards.
+select = ["E", "F", "I", "N", "UP", "B", "C90", "RUF", "SIM", "PL"]
+ignore = []
+
+[tool.ruff.lint.mccabe]
+max-complexity = 8
+
+[tool.ruff.lint.pylint]
+max-args = 8
+
+# --- Types: mypy --strict (CLAUDE.md §7) ------------------------------------
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_any_unimported = true
+files = ["src", "tests"]
+
+# --- Tests + coverage (CLAUDE.md §8) ----------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+pythonpath = ["."]
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
+
+[tool.coverage.report]
+show_missing = true
+# Overall floor is 90% (CLAUDE.md §8); the deterministic/critical core targets 100%.
+fail_under = 90

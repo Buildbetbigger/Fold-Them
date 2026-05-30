@@ -1,0 +1,31 @@
+# Virtualenvs
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# The product DB and generated reports are runtime artifacts, not source.
+data/*.sqlite
+data/*.sqlite-wal
+data/*.sqlite-shm
+reports/daily/*
+reports/cumulative/*
+!reports/daily/.gitkeep
+!reports/cumulative/.gitkeep
+
+# Logs
+logs/
+
+# Secrets — the API key lives ONLY in the environment (CLAUDE.md / base §4).
+.env
