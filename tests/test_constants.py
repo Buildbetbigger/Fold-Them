@@ -70,12 +70,19 @@ def test_api_fail_is_not_a_rejection_code() -> None:
     assert not hasattr(RejectionCode, "API_FAIL")
 
 
-def test_close_missing_is_not_a_rejection_code() -> None:
-    """Errata E5: CLOSE_MISSING is a grade outcome (UNGRADED_CLOSE_MISSING), never a
-    rejection code — writing it as a rejection would double-count a CONFIRMED candidate
-    and break the P2a §5 reconciliation identity."""
-    assert "CLOSE_MISSING" not in {c.value for c in RejectionCode}
+def test_close_missing_out_but_transient_stays_in_rejection_codes() -> None:
+    """Errata E5, including the explicit over-correction guard.
+
+    CLOSE_MISSING moves out (a CONFIRMED candidate that *passed* confirm but can't be
+    graded is a grade outcome, not a rejection). But TRANSIENT *stays* — a confirm
+    failure is a genuine rejected opportunity, dual-tracked as status=TRANSIENT plus a
+    TRANSIENT rejection. A test that only checked the first could let TRANSIENT be
+    dropped by accident."""
+    codes = {c.value for c in RejectionCode}
+    assert "CLOSE_MISSING" not in codes
     assert not hasattr(RejectionCode, "CLOSE_MISSING")
+    assert "TRANSIENT" in codes  # must NOT be swept out with CLOSE_MISSING
+    assert hasattr(RejectionCode, "TRANSIENT")
 
 
 def test_transient_reason_members_exact() -> None:
