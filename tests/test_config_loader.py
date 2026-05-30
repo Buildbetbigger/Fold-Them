@@ -146,7 +146,7 @@ def test_repo_config_yaml_loads(tmp_path: Path) -> None:
     repo_config = Path(__file__).resolve().parents[1] / "config.yaml"
     cfg = load_config(repo_config, env=ENV)
     assert cfg.run.threshold_locked is True
-    assert cfg.run.dry_run is False
+    assert cfg.run.dry_run is True  # safe default; live-audit profile flips to false
     assert cfg.signal.edge_threshold_pct == 2.0
     assert cfg.target.sport_keys == ("baseball_mlb",)
 
@@ -209,6 +209,31 @@ def test_api_key_nested_in_list_rejected(tmp_path: Path) -> None:
     cfg["misc"] = [{"deep": {"api_key": "leaked"}}]
     with pytest.raises(ApiKeyInFileError):
         _load(tmp_path, cfg)
+
+
+@pytest.mark.parametrize("alias", ["apiKey", "ODDS_API_KEY", "client_secret", "access_token"])
+def test_secret_like_key_aliases_rejected(tmp_path: Path, alias: str) -> None:
+    """Case/separator-insensitive denylist closes the alias gap."""
+    cfg = _base()
+    cfg["api"][alias] = "leaked"
+    with pytest.raises(ApiKeyInFileError, match="secret-like key"):
+        _load(tmp_path, cfg)
+
+
+def test_secret_value_in_file_rejected(tmp_path: Path) -> None:
+    """Second layer: the literal env-secret value must not appear in any config value."""
+    cfg = _base()
+    cfg["sharp_source"]["sharp_book_primary"] = ENV["ODDS_API_KEY"]  # 'secret-token'
+    with pytest.raises(ApiKeyInFileError, match="API key value appears"):
+        _load(tmp_path, cfg)
+
+
+def test_short_env_key_not_value_scanned(tmp_path: Path) -> None:
+    """A short env key is not value-scanned, so a coincidental substring is not a leak."""
+    cfg = _base()
+    cfg["target"]["market_key"] = "abc"
+    loaded = load_config(_dump(tmp_path, cfg), env={"ODDS_API_KEY": "abc"})
+    assert loaded.target.market_key == "abc"
 
 
 def test_api_key_absent_when_env_missing(tmp_path: Path) -> None:

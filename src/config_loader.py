@@ -424,18 +424,46 @@ def _build_config(file_cfg: Mapping[str, object], api_key: str | None) -> Config
     )
 
 
-def _assert_no_api_key_in_file(obj: object) -> None:
-    """Recursively refuse any ``api_key`` anywhere in the file (it is env-only)."""
+# Secrets are env-only. Primary defense: refuse any secret-like *key name* in the file
+# (case/separator-insensitive, so api_key / apiKey / ODDS_API_KEY / client_secret all
+# trip). Secondary defense: if the env key is set, refuse the literal secret *value*
+# appearing anywhere in the file.
+_SECRET_KEY_SUBSTRINGS = ("apikey", "secret", "token")
+_MIN_SECRET_SCAN_LEN = 8
+
+
+def _looks_like_secret_key(key: str) -> bool:
+    normalized = key.lower().replace("_", "").replace("-", "")
+    return any(sub in normalized for sub in _SECRET_KEY_SUBSTRINGS)
+
+
+def _reject_secret_value(value: str, api_key: str | None) -> None:
+    if api_key is not None and len(api_key) >= _MIN_SECRET_SCAN_LEN and api_key in value:
+        raise ApiKeyInFileError(
+            "the configured API key value appears in config.yaml; "
+            "it must live only in env ODDS_API_KEY"
+        )
+
+
+def _reject_secrets_in_mapping(mapping: Mapping[str, object], api_key: str | None) -> None:
+    for key, value in mapping.items():
+        if isinstance(key, str) and _looks_like_secret_key(key):
+            raise ApiKeyInFileError(
+                f"secret-like key '{key}' must not appear in config.yaml; "
+                "provide the API key via env ODDS_API_KEY"
+            )
+        _reject_secrets_in_file(value, api_key)
+
+
+def _reject_secrets_in_file(obj: object, api_key: str | None) -> None:
+    """Recursively refuse secret-like keys and the literal env secret value (env-only)."""
     if isinstance(obj, dict):
-        for key, value in obj.items():
-            if isinstance(key, str) and key.lower() == "api_key":
-                raise ApiKeyInFileError(
-                    "api_key must not appear in config.yaml; provide it via env ODDS_API_KEY"
-                )
-            _assert_no_api_key_in_file(value)
+        _reject_secrets_in_mapping(obj, api_key)
     elif isinstance(obj, list):
         for item in obj:
-            _assert_no_api_key_in_file(item)
+            _reject_secrets_in_file(item, api_key)
+    elif isinstance(obj, str):
+        _reject_secret_value(obj, api_key)
 
 
 def load_config(path: str | Path, *, env: Mapping[str, str] | None = None) -> Config:
@@ -457,9 +485,10 @@ def load_config(path: str | Path, *, env: Mapping[str, str] | None = None) -> Co
         raise ConfigError(f"invalid YAML in {p}: {exc}") from exc
 
     file_cfg = _as_mapping(loaded, "config root")
-    _assert_no_api_key_in_file(file_cfg)
     environ = os.environ if env is None else env
-    return _build_config(file_cfg, environ.get("ODDS_API_KEY"))
+    api_key = environ.get("ODDS_API_KEY")
+    _reject_secrets_in_file(file_cfg, api_key)
+    return _build_config(file_cfg, api_key)
 
 
 __all__ = [

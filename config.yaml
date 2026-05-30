@@ -4,7 +4,10 @@
 # this file is canonical-serialized and hashed into audit_runs.config_snapshot at T4.
 run:
   run_label: "v0.1_p1_feasibility_window_01"
-  dry_run: false                  # true only for fixture runs
+  # Safe default: nothing real or paid runs until this is consciously flipped, and a
+  # mistaken run fails loudly (no fixtures) rather than hitting the API. The live-audit
+  # profile sets this to false (build-plan §4); the P3 dry-run procedure uses true.
+  dry_run: true
   threshold_locked: true          # forbids mid-run edge_threshold change
   db_path: "data/market_translation.sqlite"
 
