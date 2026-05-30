@@ -8,10 +8,14 @@ Spec:
   - TWO_SIDED_EDGE ............. spec/02_P1_dedup.md §1, §4c
   - TRANSIENT reasons .......... spec/02_P1_dedup.md §4c
   - observation phase .......... spec/02_P1_dedup.md §2
-Errata (highest precedence): spec/08_implementation_errata.md E4 —
-  ``API_FAIL`` is a PULL-FAILURE code, NOT a rejection code. It is therefore
-  intentionally absent from :class:`RejectionCode` (the gate chain begins at
-  ``EVENT_FIELDS_MISSING``; see spec/03_P2_pull_failures_clock_skew.md §0).
+Errata (highest precedence): spec/08_implementation_errata.md
+  - E4 — ``API_FAIL`` is a PULL-FAILURE code, NOT a rejection code. It is therefore
+    intentionally absent from :class:`RejectionCode` (the gate chain begins at
+    ``EVENT_FIELDS_MISSING``; see spec/03_P2_pull_failures_clock_skew.md §0).
+  - E5 — ``CLOSE_MISSING`` is a GRADE outcome, NOT a rejection code. A missing close
+    grades the candidate ``status=UNGRADED`` / ``grade_status='UNGRADED_CLOSE_MISSING'``
+    with no rejection row (base §8; P1 §3/§5; P3 §7). It is likewise absent from
+    :class:`RejectionCode`; its home is a future ``GradeStatus`` enum (see tracker below).
 
 Contract (T1 acceptance / failure mode): every status, code, reason, and phase used
 anywhere in the system is defined *here* and nowhere else. Defining one outside this
@@ -19,9 +23,12 @@ module is a T1 acceptance failure ("no magic", CLAUDE.md §7).
 
 Scope note (CLAUDE.md §6 / errata E3 ticket order): this module covers the v0.1 + P1
 constants that T1 owns. Codes introduced by later tickets are added when those tickets
-are built, to avoid implementing ahead of the ticket:
+are built, to avoid implementing ahead of the ticket. Deferred-enum tracker:
   - ``PULL_FAILURE_CODE`` (incl. ``API_FAIL``) and clock-skew system codes -> T7 (P2).
-  - run-status / system-severity enums -> T3/T4 (they back ``audit_runs`` / ``system_errors``).
+  - run-status (``RUNNING|COMPLETED|ABORTED``) and system severity (``WARN|ERROR|FATAL``)
+    -> T3/T4 (they back ``audit_runs`` / ``system_errors``).
+  - ``GradeStatus`` (``GRADED|UNGRADED_CLOSE_MISSING``) -> T13/T14 (grading; errata E5).
+  - ``cycle_type`` (6 values, errata E2) -> with the ``pull_cycles`` table (P2a).
   - historical TRANSIENT reasons (``CONFIRM_GAP_TOO_LARGE``, ``CONFIRM_NO_SNAPSHOT``),
     ``mode`` and ``coverage_gap`` constants -> T20 (P3 mode plumbing).
 """
@@ -57,7 +64,9 @@ class RejectionCode(StrEnum):
     A rejection is *data*, not an error (base §6): only true exceptions go to
     ``system_errors``, and failed API pulls go to ``pull_failures`` (P2 §0).
 
-    ``API_FAIL`` is deliberately NOT a member — see the module docstring (errata E4).
+    Two base-§6 entries are deliberately NOT members (see module docstring):
+      - ``API_FAIL`` -> a pull-failure code (errata E4).
+      - ``CLOSE_MISSING`` -> a grade outcome (errata E5); gate 14 is not a rejection.
     """
 
     EVENT_FIELDS_MISSING = "EVENT_FIELDS_MISSING"  # gate 2
@@ -73,7 +82,6 @@ class RejectionCode(StrEnum):
     PRICE_SANITY = "PRICE_SANITY"  # gate 11
     BELOW_THRESHOLD = "BELOW_THRESHOLD"  # gate 12
     TRANSIENT = "TRANSIENT"  # gate 13 (reason recorded in trigger_values)
-    CLOSE_MISSING = "CLOSE_MISSING"  # gate 14
     TWO_SIDED_EDGE = "TWO_SIDED_EDGE"  # P1: both sides cross -> reject both, no candidate
 
 

@@ -89,6 +89,19 @@ Older base / build-plan / P1 text may describe `API_FAIL` as a **rejection**. Th
 
 -----
 
+## E5 — `CLOSE_MISSING` is a grade outcome, not a rejection (resolves base §6 vs §8)
+
+Base §6 lists `CLOSE_MISSING` as gate 14 (a rejection code), but base §8, P1 §3/§5, and P3 §7 model a missing close as a **grading outcome**, not a candidate rejection. The two conflict; the **lifecycle wins** (same spirit as E4). Final rule:
+
+- A `CONFIRMED` candidate whose close is missing/unusable is graded `status='UNGRADED'` with `clv_results.grade_status='UNGRADED_CLOSE_MISSING'` and `clv_pct=NULL`. **No `rejections` row is written.**
+- `CLOSE_MISSING` is therefore **not** a `REJECTION_CODE` and is removed from it. The grade outcome lives on a **`GradeStatus`** enum (`GRADED | UNGRADED_CLOSE_MISSING`), introduced with the grading tickets (T13/T14).
+- **Why it matters (not cosmetic):** the candidate is already counted as a candidate/observation; also writing a rejection would double-count it and break the P2a §5 reconciliation identity (`evaluated == observations + rejections`) and the P1 §5 funnel (`close_missing_rate = ungraded_unique / confirmed_unique`).
+- `closing_lines.close_source_flag` (`NORMAL | FROM_SUSPENSION | MISSING`) is **unchanged** — that is per-event close provenance, distinct from the per-candidate grade outcome.
+
+**Tests:** `CLOSE_MISSING` is absent from `RejectionCode` (regression guard, alongside the E4 guard for `API_FAIL`); a missing close yields exactly one `clv_results` row (`UNGRADED_CLOSE_MISSING`, `clv_pct` NULL) and **zero** `rejections` rows for that candidate.
+
+-----
+
 ## First build instruction (per the review ruling)
 
 > Read `CLAUDE.md` and `/spec` in precedence order. Implement **T1 only**. Write tests first. Do **not** proceed to T2 until I approve the diff and test output.

@@ -1,10 +1,10 @@
 """T1 acceptance tests: the constants enums are importable and their members match the
 spec exactly (spec/00_build_plan.md §2 T1).
 
-The single most important assertion here is the errata-E4 regression guard:
-``API_FAIL`` must NOT be a rejection code (spec/08_implementation_errata.md E4;
-spec/03_P2_pull_failures_clock_skew.md §0). If a future edit reintroduces it as a
-rejection, this suite fails loudly.
+The most important assertions here are the errata regression guards:
+  - E4: ``API_FAIL`` must NOT be a rejection code (it is a pull-failure code).
+  - E5: ``CLOSE_MISSING`` must NOT be a rejection code (it is a grade outcome).
+If a future edit reintroduces either as a rejection, this suite fails loudly.
 """
 
 from __future__ import annotations
@@ -37,7 +37,6 @@ EXPECTED_REJECTION_CODES = {
     "PRICE_SANITY",
     "BELOW_THRESHOLD",
     "TRANSIENT",
-    "CLOSE_MISSING",
     "TWO_SIDED_EDGE",
 }
 
@@ -59,7 +58,8 @@ def test_status_members_exact() -> None:
 
 
 def test_rejection_code_members_exact() -> None:
-    """Rejection codes match base §6 (gates 2..14) plus P1 TWO_SIDED_EDGE."""
+    """Rejection codes match base §6 opportunity gates plus P1 TWO_SIDED_EDGE, minus the
+    two superseded entries API_FAIL (E4) and CLOSE_MISSING (E5)."""
     assert {c.value for c in RejectionCode} == EXPECTED_REJECTION_CODES
     assert len(RejectionCode) == len(EXPECTED_REJECTION_CODES)
 
@@ -68,6 +68,14 @@ def test_api_fail_is_not_a_rejection_code() -> None:
     """Errata E4 / P2 §0: API_FAIL is a pull-failure code, never a rejection code."""
     assert "API_FAIL" not in {c.value for c in RejectionCode}
     assert not hasattr(RejectionCode, "API_FAIL")
+
+
+def test_close_missing_is_not_a_rejection_code() -> None:
+    """Errata E5: CLOSE_MISSING is a grade outcome (UNGRADED_CLOSE_MISSING), never a
+    rejection code — writing it as a rejection would double-count a CONFIRMED candidate
+    and break the P2a §5 reconciliation identity."""
+    assert "CLOSE_MISSING" not in {c.value for c in RejectionCode}
+    assert not hasattr(RejectionCode, "CLOSE_MISSING")
 
 
 def test_transient_reason_members_exact() -> None:
