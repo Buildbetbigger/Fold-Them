@@ -46,14 +46,16 @@ known-first-party = ["src"]
 # Tests assert against literal expected values from the spec; naming each one as a
 # constant would obscure intent, not clarify it.
 "tests/**" = ["PLR2004"]
+# repo.py DB row writers are keyword-only and column-bound (the widest, upsert_event /
+# insert_outcome, take 10). The wide lifecycle rows (candidates, observations) use typed
+# *Fields dataclasses; the arg-count guard stays tight (max-args=8) everywhere else.
+"src/repo.py" = ["PLR0913"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 8
 
 [tool.ruff.lint.pylint]
-# DB row writers in repo.py are keyword-only and inherently column-bound; 10 accommodates
-# the widest table row without forcing a dataclass per leaf writer.
-max-args = 10
+max-args = 8
 
 # --- Types: mypy --strict (CLAUDE.md §7) ------------------------------------
 [tool.mypy]

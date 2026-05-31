@@ -18,7 +18,8 @@ Design:
 from __future__ import annotations
 
 import sqlite3
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any
 
@@ -59,6 +60,26 @@ def assert_run_transition(current: RunStatus, target: RunStatus) -> None:
     """Raise :class:`IllegalTransitionError` unless ``current -> target`` is allowed."""
     if target not in ALLOWED_RUN_TRANSITIONS[current]:
         raise IllegalTransitionError(f"illegal run status transition {current} -> {target}")
+
+
+# --- transaction boundary -----------------------------------------------------------
+
+
+@contextmanager
+def unit_of_work(conn: sqlite3.Connection) -> Iterator[sqlite3.Connection]:
+    """Run a unit of work as one transaction: commit on success, roll back fully on any
+    exception.
+
+    Fail-closed: a mid-pull error leaves ZERO partial rows (P1 §7 one-transaction-per-
+    pull). The three jobs wrap each pull's writers in this, so a partial commit cannot
+    leak even if one job forgot a bare ``with conn:``.
+    """
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 # --- grouped writer inputs (the column-heavy rows; §5) ------------------------------
@@ -168,12 +189,19 @@ def start_audit_run(
     config_snapshot: str,
     run_label: str | None = None,
     code_version: str | None = None,
-    status: RunStatus = RunStatus.RUNNING,
 ) -> int:
+    """A run is always born RUNNING — a fixed birth state, never caller-supplied."""
     cur = conn.execute(
         "INSERT INTO audit_runs(run_label, run_start_ts, config_hash, config_snapshot, "
         "code_version, status) VALUES (?, ?, ?, ?, ?, ?)",
-        (run_label, run_start_ts, config_hash, config_snapshot, code_version, status.value),
+        (
+            run_label,
+            run_start_ts,
+            config_hash,
+            config_snapshot,
+            code_version,
+            RunStatus.RUNNING.value,
+        ),
     )
     return int(cur.lastrowid or 0)
 
@@ -607,6 +635,7 @@ __all__ = [
     "log_error",
     "start_audit_run",
     "transition_candidate_status",
+    "unit_of_work",
     "upsert_candidate",
     "upsert_entity",
     "upsert_event",

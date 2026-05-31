@@ -137,6 +137,23 @@ def test_candidate_transition_map_matches_p1_lifecycle() -> None:
     } == repo.ALLOWED_CANDIDATE_TRANSITIONS
 
 
+# --- unit_of_work transaction boundary ----------------------------------------------
+
+
+def test_unit_of_work_commits_on_success(conn: sqlite3.Connection) -> None:
+    with repo.unit_of_work(conn):
+        repo.start_audit_run(conn, run_start_ts="t", config_hash="h", config_snapshot="{}")
+    assert conn.execute("SELECT COUNT(*) FROM audit_runs").fetchone()[0] == 1
+
+
+def test_unit_of_work_rolls_back_on_exception(conn: sqlite3.Connection) -> None:
+    """Fail-closed: a mid-unit exception leaves zero rows."""
+    with pytest.raises(ValueError), repo.unit_of_work(conn):
+        repo.start_audit_run(conn, run_start_ts="t", config_hash="h", config_snapshot="{}")
+        raise ValueError("boom mid-pull")
+    assert conn.execute("SELECT COUNT(*) FROM audit_runs").fetchone()[0] == 0
+
+
 # --- candidate-status choke point (DB) ----------------------------------------------
 
 
