@@ -51,7 +51,9 @@ known-first-party = ["src"]
 max-complexity = 8
 
 [tool.ruff.lint.pylint]
-max-args = 8
+# DB row writers in repo.py are keyword-only and inherently column-bound; 10 accommodates
+# the widest table row without forcing a dataclass per leaf writer.
+max-args = 10
 
 # --- Types: mypy --strict (CLAUDE.md §7) ------------------------------------
 [tool.mypy]
