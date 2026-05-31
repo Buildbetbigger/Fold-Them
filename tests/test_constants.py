@@ -9,7 +9,7 @@ If a future edit reintroduces either as a rejection, this suite fails loudly.
 
 from __future__ import annotations
 
-from src.constants import Phase, RejectionCode, Status, TransientReason
+from src.constants import Phase, RejectionCode, RunStatus, Severity, Status, TransientReason
 
 # Expected member sets, written out verbatim from the spec (not derived from the code
 # under test) so the test is an independent oracle.
@@ -49,6 +49,10 @@ EXPECTED_TRANSIENT_REASONS = {
 }
 
 EXPECTED_PHASES = {"DETECTION", "CONFIRM"}
+
+EXPECTED_RUN_STATUSES = {"RUNNING", "COMPLETED", "ABORTED"}
+
+EXPECTED_SEVERITIES = {"WARN", "ERROR", "FATAL"}
 
 
 def test_status_members_exact() -> None:
@@ -97,6 +101,16 @@ def test_transient_reason_members_exact() -> None:
 def test_phase_members_exact() -> None:
     assert {p.value for p in Phase} == EXPECTED_PHASES
     assert len(Phase) == len(EXPECTED_PHASES)
+
+
+def test_run_status_members_exact() -> None:
+    assert {s.value for s in RunStatus} == EXPECTED_RUN_STATUSES
+    assert len(RunStatus) == len(EXPECTED_RUN_STATUSES)
+
+
+def test_severity_members_exact() -> None:
+    assert {s.value for s in Severity} == EXPECTED_SEVERITIES
+    assert len(Severity) == len(EXPECTED_SEVERITIES)
 
 
 def test_transient_appears_as_both_status_and_rejection_code() -> None:

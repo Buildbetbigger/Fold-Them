@@ -1,8 +1,8 @@
 -- 006_clv_results.sql — one CLV row per graded unique candidate.
 -- Ticket T3 (build-plan §3). Schema: base spec §3 (#9).
 -- UNIQUE(candidate_id): exactly one CLV per candidate (its own index; no ix_clv_cand).
--- grade_status is GRADED|UNGRADED_CLOSE_MISSING (errata E5); its CHECK + a GradeStatus
--- enum land with the grading tickets (T13/T14), not here.
+-- grade_status is GRADED|UNGRADED_CLOSE_MISSING (errata E5); free-text by base §3 (no
+-- CHECK by design), enum-backed via constants.GradeStatus which lands with grading (T13/T14).
 -- FK parents (candidates, closing_lines) exist by 004/003.
 
 CREATE TABLE clv_results (

@@ -11,6 +11,7 @@ CREATE TABLE audit_runs (
     config_hash     TEXT NOT NULL,
     config_snapshot TEXT NOT NULL,          -- resolved config JSON (secret-free)
     code_version    TEXT,                   -- git sha
+    -- free-text by base §3 (no CHECK by design); enum-backed via constants.RunStatus (T4)
     status          TEXT NOT NULL           -- RUNNING|COMPLETED|ABORTED
 );
 
@@ -19,6 +20,7 @@ CREATE TABLE system_errors (
     error_ts     TEXT NOT NULL,
     audit_run_id INTEGER REFERENCES audit_runs(audit_run_id),
     component    TEXT NOT NULL,
+    -- free-text by base §3 (no CHECK by design); enum-backed via constants.Severity (T4)
     severity     TEXT NOT NULL,             -- WARN|ERROR|FATAL
     context      TEXT,                      -- JSON (pull_id/event_id/etc)
     message      TEXT NOT NULL,

@@ -42,6 +42,8 @@ CREATE TABLE closing_lines (
     outcome_b_id            TEXT,
     outcome_b_decimal       REAL,
     outcome_b_novig         REAL,
+    -- free-text by base §3 (no CHECK by design); values are enum-backed at the
+    -- application layer via constants.CloseSourceFlag, which lands with closing.py (T13).
     close_source_flag       TEXT NOT NULL,  -- NORMAL|FROM_SUSPENSION|MISSING
     UNIQUE(event_id, sharp_book)
 );

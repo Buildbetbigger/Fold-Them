@@ -23,14 +23,27 @@ module is a T1 acceptance failure ("no magic", CLAUDE.md §7).
 
 Scope note (CLAUDE.md §6 / errata E3 ticket order): this module covers the v0.1 + P1
 constants that T1 owns. Codes introduced by later tickets are added when those tickets
-are built, to avoid implementing ahead of the ticket. Deferred-enum tracker:
-  - ``PULL_FAILURE_CODE`` (incl. ``API_FAIL``) and clock-skew system codes -> T7 (P2).
-  - run-status (``RUNNING|COMPLETED|ABORTED``) and system severity (``WARN|ERROR|FATAL``)
-    -> T3/T4 (they back ``audit_runs`` / ``system_errors``).
-  - ``GradeStatus`` (``GRADED|UNGRADED_CLOSE_MISSING``) -> T13/T14 (grading; errata E5).
-  - ``cycle_type`` (6 values, errata E2) -> with the ``pull_cycles`` table (P2a).
-  - historical TRANSIENT reasons (``CONFIRM_GAP_TOO_LARGE``, ``CONFIRM_NO_SNAPSHOT``),
-    ``mode`` and ``coverage_gap`` constants -> T20 (P3 mode plumbing).
+are built, to avoid implementing ahead of the ticket.
+
+CHECK<->enum rule (single source of truth): every value-enumerating SQL CHECK maps to
+exactly one enum here, with a reconciliation test (now if the enum exists; deferred with
+the enum if it lands later). Columns the schema deliberately leaves free-text (no CHECK,
+per base §3) are still enum-backed at the application layer — the writer uses the enum
+and is covered by a writer test, not a CHECK-reconciliation test.
+
+Deferred/landed-enum tracker ([CHECK] = DB CHECK + reconciliation test;
+[free-text] = no CHECK by base §3, enum-backed at the app layer + writer-tested):
+  - RunStatus (RUNNING|COMPLETED|ABORTED) -> T4 here [free-text: audit_runs.status]
+  - Severity (WARN|ERROR|FATAL) -> T4 here [free-text: system_errors.severity]
+  - PULL_FAILURE_CODE (8 codes incl. API_FAIL) -> T7 [CHECK: pull_failures.failure_code]
+  - clock-skew codes (CLOCK_SKEW_WARNING|HALT) -> T11/T12, where the skew check runs
+    (detect.py + confirm) [free-text: system_errors]
+  - GradeStatus (GRADED|UNGRADED_CLOSE_MISSING, E5) -> T13/T14 [free-text]
+  - CloseSourceFlag (NORMAL|FROM_SUSPENSION|MISSING) -> T13 [free-text]
+  - cycle_type (E2's 6 values) -> with pull_cycles [CHECK: pull_cycles.cycle_type]
+  - CycleOutcome (PENDING|SUCCESS|FAILED) -> with pull_cycles [CHECK: pull_cycles.outcome]
+  - historical TRANSIENT reasons (CONFIRM_GAP_TOO_LARGE, CONFIRM_NO_SNAPSHOT), mode,
+    coverage_gap -> T20.
 """
 
 from __future__ import annotations
@@ -108,4 +121,31 @@ class Phase(StrEnum):
     CONFIRM = "CONFIRM"
 
 
-__all__ = ["Phase", "RejectionCode", "Status", "TransientReason"]
+class RunStatus(StrEnum):
+    """``audit_runs.status`` lifecycle (base §3 #10). Lands with T4 (repository writers).
+
+    Free-text in the DB (no CHECK, per base §3); enum-backed at the application layer.
+    Transitions are guarded in repo: ``RUNNING -> COMPLETED | ABORTED`` (both terminal).
+    """
+
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    ABORTED = "ABORTED"
+
+
+class Severity(StrEnum):
+    """``system_errors.severity`` (base §3 #11). Lands with T4. Free-text in the DB."""
+
+    WARN = "WARN"
+    ERROR = "ERROR"
+    FATAL = "FATAL"
+
+
+__all__ = [
+    "Phase",
+    "RejectionCode",
+    "RunStatus",
+    "Severity",
+    "Status",
+    "TransientReason",
+]
