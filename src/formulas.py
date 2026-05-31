@@ -52,23 +52,31 @@ def devig_two_way(d1: float, d2: float) -> tuple[float, float]:
 def edge_pct(p_fair: float, d_soft: float) -> float:
     """Edge percent of a soft price vs the sharp fair probability: ``(p_fair*d_soft - 1)*100``.
 
-    A candidate requires ``edge_pct >= edge_threshold_pct``. Price-domain validation is the
-    gate's job (PRICE_SANITY), not this pure arithmetic.
+    A candidate requires ``edge_pct >= edge_threshold_pct``. Pure arithmetic — price-domain
+    validation is the gate's job (PRICE_SANITY), not here.
+
+    Precondition (validated upstream, not asserted here per base §5): ``p_fair in (0, 1)``
+    (from :func:`devig_two_way`) and ``d_soft > 1`` (PRICE_SANITY at T10).
     """
     return (p_fair * d_soft - 1.0) * 100.0
 
 
 def closing_novig(d_sel: float, d_opp: float) -> float:
-    """No-vig probability of the selection side at close. Raises if either ``<= 1.0``."""
-    if d_sel <= _MIN_DECIMAL or d_opp <= _MIN_DECIMAL:
-        raise InvalidOddsError(f"both decimals must be > 1.0, got ({d_sel}, {d_opp})")
-    q_sel = 1.0 / d_sel
-    q_opp = 1.0 / d_opp
-    return q_sel / (q_sel + q_opp)
+    """No-vig probability of the selection side at close.
+
+    Delegates to :func:`devig_two_way` so there is exactly ONE de-vig implementation: a
+    future switch to Shin/log de-vig (a v0.1 "later refinement") then changes one place.
+    Raises if either side is ``<= 1.0``.
+    """
+    return devig_two_way(d_sel, d_opp)[0]
 
 
 def clv_pct(d_taken: float, p_close: float) -> float:
-    """Closing Line Value percent: ``(d_taken * p_close - 1) * 100``."""
+    """Closing Line Value percent: ``(d_taken * p_close - 1) * 100``.
+
+    Precondition (validated upstream, not asserted here): ``d_taken > 1`` and
+    ``p_close in (0, 1)`` (from :func:`closing_novig`).
+    """
     return (d_taken * p_close - 1.0) * 100.0
 
 
